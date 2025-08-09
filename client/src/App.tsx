@@ -15,6 +15,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/book/:username" element={<Booking />} />
+          <Route path="/book/:username/:slotType" element={<Booking />} />
           <Route path="*" element={
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
               <div className="text-center">

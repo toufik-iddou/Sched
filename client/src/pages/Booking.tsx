@@ -1,31 +1,106 @@
-import * as React from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config.ts';
 
 type Slot = { day: string; start: string; end: string };
 
 type Host = { name: string; avatar: string };
 
+type BookedSlot = {
+  start: Date;
+  end: Date;
+};
+
 function Booking() {
-  const { username } = useParams();
+  const { username, slotType } = useParams();
   const [host, setHost] = React.useState(null as Host | null);
   const [slots, setSlots] = React.useState([] as Slot[]);
-  const [selected, setSelected] = React.useState(null as { day: string; start: string; end: string } | null);
+  const [bookedSlots, setBookedSlots] = React.useState([] as BookedSlot[]);
+  const [currentSlotType, setCurrentSlotType] = React.useState('');
+  const [selectedDate, setSelectedDate] = React.useState('');
+  const [selectedSlot, setSelectedSlot] = React.useState(null as { start: string; end: string } | null);
   const [guestName, setGuestName] = React.useState('');
   const [guestEmail, setGuestEmail] = React.useState('');
-  const [date, setDate] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [error, setError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
 
   React.useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/booking/availability/${username}`)
-      .then(res => {
-        setHost(res.data.host);
-        setSlots(res.data.slots);
-      })
-      .catch(() => setError('Host not found'));
-  }, [username]);
+    // Load availability and booked slots
+    const loadData = async () => {
+      try {
+        // Get availability
+        const endpoint = slotType 
+          ? `${API_URL}/booking/availability/${username}/${slotType}`
+          : `${API_URL}/booking/availability/${username}`;
+        const availabilityRes = await axios.get(endpoint);
+        setHost(availabilityRes.data.host);
+        setSlots(availabilityRes.data.slots);
+        setCurrentSlotType(availabilityRes.data.slotType || '');
+
+        // Get booked slots
+        const bookingsRes = await axios.get(`${API_URL}/booking/host/${username}/bookings`);
+        setBookedSlots(bookingsRes.data.map((booking: any) => ({
+          start: new Date(booking.start),
+          end: new Date(booking.end)
+        })));
+      } catch (err) {
+        setError(slotType ? 'Slot type not found' : 'Host not found');
+      }
+    };
+    
+    loadData();
+  }, [username, slotType]);
+
+  // Helper functions for calendar
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const getDayName = (date: Date) => {
+    return date.toLocaleDateString('en-US', { weekday: 'long' });
+  };
+
+  const formatDate = (date: Date) => {
+    return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`
+    };
+
+  // Helper function to create a Date object from selectedDate string in local timezone
+  const createLocalDate = (dateString: string) => {
+    const dateParts = dateString.split('-');
+    return new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+  };
+
+  const isDateAvailable = (date: Date) => {
+    const dayName = getDayName(date);
+    return slots.some(slot => slot.day === dayName);
+  };
+
+  const getAvailableSlotsForDate = (date: Date) => {
+    const dayName = getDayName(date);
+    const daySlots = slots.filter(slot => slot.day === dayName);
+    
+    // Filter out booked slots
+    return daySlots.filter(slot => {
+      // Create local date and time objects to avoid timezone conversion
+      const slotStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 
+        parseInt(slot.start.split(':')[0]), parseInt(slot.start.split(':')[1]));
+      const slotEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 
+        parseInt(slot.end.split(':')[0]), parseInt(slot.end.split(':')[1]));
+      
+      return !bookedSlots.some(booked => 
+        (slotStart >= booked.start && slotStart < booked.end) ||
+        (slotEnd > booked.start && slotEnd <= booked.end) ||
+        (slotStart <= booked.start && slotEnd >= booked.end)
+      );
+    });
+  };
 
   const handleBook = async (e: any) => {
     e.preventDefault();
@@ -33,24 +108,35 @@ function Booking() {
     setMessage('');
     setIsLoading(true);
     
-    if (!selected || !date) {
-      setError('Please select a time slot and date');
+    if (!selectedSlot || !selectedDate) {
+      setError('Please select a date and time slot');
       setIsLoading(false);
       return;
     }
     
-    const start = new Date(`${date}T${selected.start}`);
-    const end = new Date(`${date}T${selected.end}`);
+    // Create dates in local timezone to avoid UTC conversion issues
+    const selectedDateObj = createLocalDate(selectedDate);
+    const start = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 
+      parseInt(selectedSlot.start.split(':')[0]), parseInt(selectedSlot.start.split(':')[1]));
+    const end = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate(), 
+      parseInt(selectedSlot.end.split(':')[0]), parseInt(selectedSlot.end.split(':')[1]));
     
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/booking/book/${username}`, {
+      await axios.post(`${API_URL}/booking/book/${username}`, {
         guestName, guestEmail, start, end
       });
       setMessage('Booking successful! Check your email for the meeting details.');
       setGuestName('');
       setGuestEmail('');
-      setDate('');
-      setSelected(null);
+      setSelectedDate('');
+      setSelectedSlot(null);
+      
+      // Refresh booked slots
+      const bookingsRes = await axios.get(`${API_URL}/booking/host/${username}/bookings`);
+      setBookedSlots(bookingsRes.data.map((booking: any) => ({
+        start: new Date(booking.start),
+        end: new Date(booking.end)
+      })));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Booking failed. Please try again.');
     } finally {
@@ -137,6 +223,19 @@ function Booking() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
+        {currentSlotType && (
+          <div className="mb-6">
+            <nav className="flex items-center space-x-2 text-sm text-gray-500">
+              <a href={`/book/${username}`} className="hover:text-gray-700">{host.name}'s Calendar</a>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="text-gray-900 font-medium">{currentSlotType}</span>
+            </nav>
+          </div>
+        )}
+
         {/* Host Information */}
         <div className="text-center mb-8">
           <img 
@@ -144,48 +243,148 @@ function Booking() {
             alt={`${host.name}'s avatar`} 
             className="w-16 h-16 rounded-full mx-auto mb-4 border-4 border-white shadow-medium" 
           />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Book a meeting with {host.name}</h1>
-          <p className="text-gray-600">Select an available time slot that works for you</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Book {currentSlotType ? `${currentSlotType} with` : 'a meeting with'} {host.name}
+          </h1>
+          <p className="text-gray-600">
+            {currentSlotType 
+              ? `Select an available ${currentSlotType.toLowerCase()} time slot that works for you`
+              : 'Select an available time slot that works for you'
+            }
+          </p>
+          {currentSlotType && (
+            <div className="mt-3">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
+                {currentSlotType}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Time Slot Selection */}
+          {/* Calendar View */}
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Time Slots</h3>
-            
-            {slots.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <svg className="w-8 h-8 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p>No available time slots at the moment.</p>
-                <p className="text-sm mt-1">Please check back later or contact {host.name} directly.</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Select a Date
+              </h3>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                  className="p-1 rounded hover:bg-gray-100"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h4 className="text-sm font-medium text-gray-900 min-w-[120px] text-center">
+                  {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h4>
+                <button
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                  className="p-1 rounded hover:bg-gray-100"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {slots.map(slot => (
-                  <button
-                    key={slot.day + slot.start}
-                    type="button"
-                    onClick={() => setSelected(slot)}
-                    className={`p-4 rounded-lg border-2 text-left transition-all duration-200 ${
-                      selected?.day === slot.day && selected?.start === slot.start
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
-                        : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="font-medium text-gray-900">{slot.day}</div>
-                    <div className="text-sm text-gray-600">{slot.start} - {slot.end}</div>
-                    {selected?.day === slot.day && selected?.start === slot.start && (
-                      <div className="mt-2 flex items-center text-primary-600">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-xs font-medium">Selected</span>
-                      </div>
-                    )}
-                  </button>
-                ))}
+            </div>
+            
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1 mb-4">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="p-2 text-xs font-medium text-gray-500 text-center">
+                  {day}
+                </div>
+              ))}
+              
+              {/* Calendar Days */}
+              {(() => {
+                const daysInMonth = getDaysInMonth(currentMonth);
+                const firstDay = getFirstDayOfMonth(currentMonth);
+                const today = new Date();
+                const days: any[] = [];
+                
+                // Empty cells for days before month starts
+                for (let i = 0; i < firstDay; i++) {
+                  days.push(<div key={`empty-${i}`} className="p-2"></div>);
+                }
+                
+                // Days of the month
+                for (let day = 1; day <= daysInMonth; day++) {
+                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                  const isPast = date < today;
+                  const isAvailable = !isPast && isDateAvailable(date);
+                  const isSelected = selectedDate === formatDate(date);
+                  
+                  days.push(
+                    <button
+                      key={day}
+                      disabled={!isAvailable}
+                      onClick={() => {
+                        if (isAvailable) {
+                          setSelectedDate(formatDate(date));
+                          setSelectedSlot(null); // Reset slot selection when date changes
+                        }
+                      }}
+                      className={`p-2 text-sm rounded transition-all duration-200 ${
+                        isPast 
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : isAvailable
+                            ? isSelected
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                            : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                }
+                
+                return days;
+              })()}
+            </div>
+            
+            {/* Available slots for selected date */}
+            
+            {selectedDate && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">
+                  Available times for {createLocalDate(selectedDate).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </h4>
+                {(() => {
+                  const availableSlots = getAvailableSlotsForDate(createLocalDate(selectedDate));
+                  
+                  if (availableSlots.length === 0) {
+                    return (
+                      <p className="text-sm text-gray-500">No available times for this date.</p>
+                    );
+                  }
+                  
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableSlots.map((slot, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedSlot(slot)}
+                          className={`p-2 text-sm rounded border-2 transition-all duration-200 ${
+                            selectedSlot?.start === slot.start && selectedSlot?.end === slot.end
+                              ? 'border-primary-500 bg-primary-50 text-primary-700'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {slot.start} - {slot.end}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -226,21 +425,7 @@ function Booking() {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Date *
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  min={today}
-                  required
-                  className="input-field"
-                />
-              </div>
-
-              {selected && (
+              {selectedSlot && selectedDate && (
                 <div className="p-3 bg-primary-50 rounded-lg border border-primary-200">
                   <div className="flex items-center">
                     <svg className="w-5 h-5 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,10 +433,15 @@ function Booking() {
                     </svg>
                     <div>
                       <p className="text-sm font-medium text-primary-800">
-                        Selected: {selected.day} {date && new Date(date).toLocaleDateString()}
+                        Selected: {createLocalDate(selectedDate).toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          month: 'long', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
                       </p>
                       <p className="text-sm text-primary-600">
-                        {selected.start} - {selected.end}
+                        {selectedSlot.start} - {selectedSlot.end}
                       </p>
                     </div>
                   </div>
@@ -260,7 +450,7 @@ function Booking() {
 
               <button
                 type="submit"
-                disabled={isLoading || !selected || !date}
+                disabled={isLoading || !selectedSlot || !selectedDate}
                 className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
