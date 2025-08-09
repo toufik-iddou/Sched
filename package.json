@@ -1,0 +1,19 @@
+{
+  "name": "codtoop-calendar",
+  "version": "1.0.0",
+  "description": "A scheduling application with Google Calendar integration",
+  "scripts": {
+    "start": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm start\"",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "server": "cd server && npm start",
+    "client": "cd client && npm start"
+  },
+  "keywords": ["calendar", "scheduling", "react", "nodejs"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+} 
