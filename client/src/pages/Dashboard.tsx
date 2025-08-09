@@ -298,7 +298,7 @@ function Dashboard() {
                   <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
               </div>
-              <span className="text-2xl font-bold text-gray-900">Sched</span>
+              <span className="text-2xl font-bold text-gray-900">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
             </div>
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-4 px-4 py-2 bg-gray-50 rounded-xl">

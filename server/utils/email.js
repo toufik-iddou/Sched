@@ -10,12 +10,15 @@ const transporter = nodemailer.createTransport({
 
 async function sendBookingEmail({ to, subject, text }) {
   // In production, improve HTML and error handling
-  await transporter.sendMail({
+  console.log("send email")
+  console.log({ to, subject, text })
+  const res = await transporter.sendMail({
     from: process.env.EMAIL_USER,
     to,
     subject,
     text,
   });
+  console.log(res)
 }
 
 module.exports = { sendBookingEmail }; 

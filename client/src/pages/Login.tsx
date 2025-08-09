@@ -37,7 +37,7 @@ const Login = () => {
               <line x1="8" y1="2" x2="8" y2="6"></line>
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
-            <span className="text-2xl font-bold text-gray-900">Sched</span>
+            <span className="text-2xl font-bold text-gray-900">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">

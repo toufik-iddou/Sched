@@ -77,7 +77,7 @@ const Home = () => {
               <div className="p-2 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-bold text-gray-900 ml-3">Sched</span>
+              <span className="text-2xl font-bold text-gray-900 ml-3">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
             </div>
             <div className="flex items-center space-x-6">
               <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200">
@@ -233,7 +233,7 @@ const Home = () => {
             <div className="p-2 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg mr-3">
               <Calendar className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Sched</span>
+            <span className="text-xl font-bold text-gray-900">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
             <span className="text-gray-500 ml-6">© 2024 All rights reserved.</span>
           </div>
         </div>

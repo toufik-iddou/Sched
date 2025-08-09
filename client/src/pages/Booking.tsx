@@ -184,14 +184,14 @@ function Booking() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Booking Confirmed!</h3>
           <p className="text-gray-600 mb-6">{message}</p>
-          <div className="space-y-3">
+          {/* <div className="space-y-3">
             <button onClick={() => {setMessage(''); setError('');}} className="btn-primary w-full">
               Book Another Meeting
             </button>
             <Link to="/" className="btn-secondary w-full">
               Back to Home
             </Link>
-          </div>
+          </div> */}
         </div>
       </div>
     );
@@ -213,7 +213,7 @@ function Booking() {
                 <line x1="8" y1="2" x2="8" y2="6"></line>
                 <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
-              <span className="text-xl font-bold text-gray-900">Sched</span>
+              <span className="text-xl font-bold text-gray-900">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
             </Link>
             {/* <Link to="/login" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
               Sign in to create your own booking page
