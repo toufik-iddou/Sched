@@ -85,7 +85,7 @@ function Booking() {
   const getAvailableSlotsForDate = (date: Date) => {
     const dayName = getDayName(date);
     const daySlots = slots.filter(slot => slot.day === dayName);
-    
+   
     // Filter out booked slots
     return daySlots.filter(slot => {
       // Create local date and time objects to avoid timezone conversion
@@ -98,7 +98,7 @@ function Booking() {
         (slotStart >= booked.start && slotStart < booked.end) ||
         (slotEnd > booked.start && slotEnd <= booked.end) ||
         (slotStart <= booked.start && slotEnd >= booked.end)
-      );
+      ) && slotStart > new Date();
     });
   };
 
@@ -145,7 +145,6 @@ function Booking() {
   };
 
   if (error) {
-    console.log(error)
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="card max-w-md text-center">
@@ -315,7 +314,12 @@ function Booking() {
                 for (let day = 1; day <= daysInMonth; day++) {
                   const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                   const isPast = date < today;
+                  today.setHours(0, 0, 0, 0);
                   const isAvailable = !isPast && isDateAvailable(date);
+                  if(day == 11){
+                 
+                }
+                
                   const isSelected = selectedDate === formatDate(date);
                   
                   days.push(
@@ -359,6 +363,8 @@ function Booking() {
                   })}
                 </h4>
                 {(() => {
+                  console.log(selectedDate)
+                  console.log(createLocalDate(selectedDate))
                   const availableSlots = getAvailableSlotsForDate(createLocalDate(selectedDate));
                   
                   if (availableSlots.length === 0) {
