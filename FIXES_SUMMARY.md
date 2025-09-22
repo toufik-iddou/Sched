@@ -152,3 +152,8 @@ The system will now:
 The system now has robust error handling and fallback mechanisms, so even if Google Calendar is not configured, the booking system will still work with mock meet links and email notifications.
 
 
+
+
+
+
+

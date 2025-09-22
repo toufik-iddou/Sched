@@ -7,6 +7,12 @@ const createTransporter = () => {
     return null;
   }
 
+  console.log('Creating email transporter with:', {
+    user: process.env.EMAIL_USER,
+    passConfigured: !!process.env.EMAIL_PASS,
+    passLength: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0
+  });
+
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -22,7 +28,7 @@ const createTransporter = () => {
 
 async function sendBookingEmail({ to, subject, text, html }) {
   const transporter = createTransporter();
-  
+
   if (!transporter) {
     console.error('Email transporter not available - check environment variables');
     return { success: false, error: 'Email configuration missing' };

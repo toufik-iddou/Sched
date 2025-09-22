@@ -51,8 +51,23 @@ async function getTokensFromCode(code) {
   }
 }
 
+// Refresh access token using refresh token
+async function refreshAccessToken(refreshToken) {
+  const oauth2Client = createOAuth2Client();
+  if (!oauth2Client) return null;
+
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    return credentials;
+  } catch (error) {
+    console.error('Error refreshing access token:', error);
+    return null;
+  }
+}
+
 // Create calendar event with Google Meet
-async function createCalendarEvent({ hostEmail, guestEmail, start, end, summary, description = '', accessToken }) {
+async function createCalendarEvent({ hostEmail, guestEmail, start, end, summary, description = '', accessToken, refreshToken }) {
   const oauth2Client = createOAuth2Client();
   if (!oauth2Client) {
     console.error('OAuth2 client not available');
@@ -64,8 +79,22 @@ async function createCalendarEvent({ hostEmail, guestEmail, start, end, summary,
     return { success: false, error: 'Access token required' };
   }
 
+  // Try to refresh token if provided
+  let finalAccessToken = accessToken;
+  if (refreshToken) {
+    try {
+      const refreshedCredentials = await refreshAccessToken(refreshToken);
+      if (refreshedCredentials && refreshedCredentials.access_token) {
+        finalAccessToken = refreshedCredentials.access_token;
+        console.log('Access token refreshed successfully');
+      }
+    } catch (error) {
+      console.log('Token refresh failed, using original token:', error.message);
+    }
+  }
+
   try {
-    oauth2Client.setCredentials({ access_token: accessToken });
+    oauth2Client.setCredentials({ access_token: finalAccessToken });
     
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
     
@@ -96,7 +125,8 @@ async function createCalendarEvent({ hostEmail, guestEmail, start, end, summary,
         useDefault: false,
         overrides: [
           { method: 'email', minutes: 24 * 60 }, // 1 day before
-          { method: 'popup', minutes: 10 } // 10 minutes before
+          { method: 'popup', minutes: 20 }, // 20 minutes before
+          { method: 'popup', minutes: 5 } // 5 minutes before
         ]
       }
     };
@@ -124,9 +154,7 @@ async function createCalendarEvent({ hostEmail, guestEmail, start, end, summary,
     console.error('Error creating calendar event:', error);
     return { 
       success: false, 
-      error: error.message,
-      // Fallback: return a mock meet link if calendar creation fails
-      meetLink: 'https://meet.google.com/fallback-link'
+      error: error.message
     };
   }
 }
@@ -180,17 +208,23 @@ async function deleteCalendarEvent({ eventId, accessToken }) {
 async function createMockCalendarEvent({ hostEmail, guestEmail, start, end, summary }) {
   console.log('Using mock calendar event (Google Calendar not configured)');
   
-  // Generate a mock meet link
-  const mockMeetId = Math.random().toString(36).substring(2, 15);
-  const mockMeetLink = `https://meet.google.com/${mockMeetId}`;
-  
+  // Don't generate invalid meet links - let the frontend handle this
   return {
     success: true,
     eventId: `mock-event-${Date.now()}`,
-    meetLink: mockMeetLink,
-    eventUrl: mockMeetLink,
+    meetLink: null, // No valid meet link available
+    eventUrl: null,
     isMock: true
   };
+}
+
+// Validate if a meet link is a real Google Meet link
+function isValidMeetLink(meetLink) {
+  if (!meetLink) return false;
+  
+  // Check if it's a valid Google Meet URL format
+  const meetUrlPattern = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/i;
+  return meetUrlPattern.test(meetLink);
 }
 
 module.exports = { 
@@ -199,5 +233,7 @@ module.exports = {
   deleteCalendarEvent,
   getAuthUrl,
   getTokensFromCode,
-  createMockCalendarEvent
+  refreshAccessToken,
+  createMockCalendarEvent,
+  isValidMeetLink
 }; 

@@ -10,6 +10,8 @@ passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_REDIRECT_URI,
+  accessType: 'offline',
+  prompt: 'consent'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
@@ -19,7 +21,18 @@ passport.use(new GoogleStrategy({
         email: profile.emails[0].value,
         name: profile.displayName,
         avatar: profile.photos[0].value,
+        googleAccessToken: accessToken,
+        googleRefreshToken: refreshToken,
+        googleTokenExpiry: new Date(Date.now() + 3600 * 1000), // 1 hour from now
+        googleCalendarConnected: true,
       });
+    } else {
+      // Update existing user with new tokens
+      user.googleAccessToken = accessToken;
+      user.googleRefreshToken = refreshToken;
+      user.googleTokenExpiry = new Date(Date.now() + 3600 * 1000); // 1 hour from now
+      user.googleCalendarConnected = true;
+      await user.save();
     }
     return done(null, user);
   } catch (err) {
@@ -41,7 +54,14 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // Google OAuth routes
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', passport.authenticate('google', { 
+  scope: [
+    'profile', 
+    'email',
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events'
+  ] 
+}));
 
 router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/' }), (req, res) => {
   // Issue JWT

@@ -734,7 +734,7 @@ function Dashboard() {
                         <p className="text-sm text-gray-500 font-medium">{new Date(booking.start).toLocaleString()}</p>
                       </div>
                     </div>
-                    {booking.meetLink && (
+                    {booking.meetLink ? (
                       <a 
                         href={booking.meetLink} 
                         target="_blank" 
@@ -746,6 +746,13 @@ function Dashboard() {
                         </svg>
                         Join Meeting
                       </a>
+                    ) : (
+                      <span className="text-gray-500 text-sm">
+                        <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        No video call link
+                      </span>
                     )}
                   </div>
                 ))

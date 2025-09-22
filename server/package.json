@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test-config": "node test-config.js"
+    "test-config": "node test-config.js",
+    "test-google-auth": "node test-google-auth.js"
   },
   "keywords": [],
   "author": "",

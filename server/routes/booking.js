@@ -2,14 +2,14 @@ const express = require('express');
 const User = require('../models/User');
 const Availability = require('../models/Availability');
 const Booking = require('../models/Booking');
-const { createCalendarEvent, createMockCalendarEvent } = require('../utils/googleCalendar');
+const { createCalendarEvent, createMockCalendarEvent, isValidMeetLink } = require('../utils/googleCalendar');
 const { sendBookingEmail } = require('../utils/email');
 
 const router = express.Router();
 
 // Get host's public availability (by username)
 router.get('/availability/:username', async (req, res) => {
-  console.log(req.params.username)
+  
   const user = await User.findOne({ name: req.params.username });
   if (!user) return res.status(404).json({ message: 'Host not found' });
   const slots = await Availability.find({ user: user._id });
@@ -61,6 +61,20 @@ router.get('/host/:username/bookings', async (req, res) => {
   res.json(bookings);
 });
 
+// Get a specific booking by ID
+router.get('/booking/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId).populate('host', 'name email');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    res.json(booking);
+  } catch (error) {
+    console.error('Error fetching booking:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Create a booking
 router.post('/book/:username', async (req, res) => {
   const { guestName, guestEmail, start, end } = req.body;
@@ -90,7 +104,8 @@ router.post('/book/:username', async (req, res) => {
       end,
       summary: `Meeting with ${guestName}`,
       description: `Meeting between ${user.name} and ${guestName}`,
-      accessToken: user.googleAccessToken // Assuming you store this in user model
+      accessToken: user.googleAccessToken,
+      refreshToken: user.googleRefreshToken
     });
 
     if (event.success) {
@@ -119,12 +134,15 @@ router.post('/book/:username', async (req, res) => {
       eventId = fallbackEvent.eventId;
       meetLink = fallbackEvent.meetLink;
       eventUrl = fallbackEvent.eventUrl;
-      console.log('Using fallback calendar event');
+      console.log('Using fallback calendar event (no meet link available)');
     } catch (e) {
       console.log('Fallback calendar event also failed:', e.message);
     }
   }
 
+  // Validate meet link before saving
+  const validMeetLink = meetLink && isValidMeetLink(meetLink) ? meetLink : null;
+  
   const booking = await Booking.create({
     host: user._id,
     guestName,
@@ -132,7 +150,7 @@ router.post('/book/:username', async (req, res) => {
     start,
     end,
     googleEventId: eventId,
-    meetLink
+    meetLink: validMeetLink
   });
 
   // Email notifications with improved error handling
@@ -160,7 +178,7 @@ router.post('/book/:username', async (req, res) => {
         <p><strong>Guest:</strong> ${guestName}</p>
         <p><strong>Date & Time:</strong> ${timeStr}</p>
         <p><strong>Duration:</strong> ${duration} minutes</p>
-        <p><strong>Meeting Link:</strong> <a href="${meetLink}" style="color: #007bff;">${meetLink}</a></p>
+        ${meetLink ? `<p><strong>Meeting Link:</strong> <a href="${meetLink}" style="color: #007bff;">${meetLink}</a></p>` : '<p><strong>Meeting Link:</strong> <em>No video call link available. Please contact the host for meeting details.</em></p>'}
         ${eventUrl ? `<p><strong>Calendar Event:</strong> <a href="${eventUrl}" style="color: #007bff;">View in Calendar</a></p>` : ''}
         <hr style="margin: 20px 0;">
         <p style="color: #666; font-size: 14px;">This meeting was scheduled through Codtoop Calendar.</p>
@@ -171,15 +189,14 @@ router.post('/book/:username', async (req, res) => {
     emailResults.host = await sendBookingEmail({
       to: user.email,
       subject: `New Booking: ${guestName} - ${timeStr}`,
-      text: `You have a new booking with ${guestName} (${guestEmail}) at ${timeStr}. Meet link: ${meetLink}`,
+      text: `You have a new booking with ${guestName} (${guestEmail}) at ${timeStr}.${meetLink ? ` Meet link: ${meetLink}` : ' No video call link available.'}`,
       html: htmlContent
     });
-
     // Send email to guest
     emailResults.guest = await sendBookingEmail({
       to: guestEmail,
       subject: `Booking Confirmed: ${user.name} - ${timeStr}`,
-      text: `Your meeting with ${user.name} is confirmed for ${timeStr}. Meet link: ${meetLink}`,
+      text: `Your meeting with ${user.name} is confirmed for ${timeStr}.${meetLink ? ` Meet link: ${meetLink}` : ' No video call link available.'}`,
       html: htmlContent
     });
 
@@ -204,7 +221,7 @@ router.post('/book/:username', async (req, res) => {
 // Test endpoint for debugging email and calendar
 router.post('/test', async (req, res) => {
   try {
-    const { testEmail, testCalendar } = req.body;
+    const { testEmail, testCalendar, userId } = req.body;
     const results = {};
 
     // Test email functionality
@@ -223,6 +240,20 @@ router.post('/test', async (req, res) => {
         end: new Date(Date.now() + 25 * 60 * 60 * 1000),   // Tomorrow + 1 hour
         summary: 'Test Meeting'
       });
+    }
+
+    // Test user's Google Calendar connection
+    if (userId) {
+      const User = require('../models/User');
+      const user = await User.findById(userId);
+      if (user) {
+        results.userGoogleStatus = {
+          hasAccessToken: !!user.googleAccessToken,
+          hasRefreshToken: !!user.googleRefreshToken,
+          googleCalendarConnected: user.googleCalendarConnected,
+          tokenExpiry: user.googleTokenExpiry
+        };
+      }
     }
 
     res.json({

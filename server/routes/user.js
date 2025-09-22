@@ -7,7 +7,6 @@ const router = express.Router();
 
 // Middleware to verify JWT and attach user to req
 function authenticateJWT(req, res, next) {
-console.log(req.headers.authorization)
 const authHeader = req.headers.authorization;
 if (authHeader && authHeader.startsWith('Bearer ')) {
   const token = authHeader.split(' ')[1];
@@ -107,7 +106,32 @@ router.get('/google-status/:userId', async (req, res) => {
     res.json({
       connected: !!user.googleAccessToken,
       hasValidToken,
-      needsRefresh: user.googleAccessToken && !hasValidToken
+      needsRefresh: user.googleAccessToken && !hasValidToken,
+      googleCalendarConnected: user.googleCalendarConnected
+    });
+  } catch (error) {
+    console.error('Error checking Google status:', error);
+    res.status(500).json({ error: 'Failed to check Google status' });
+  }
+});
+
+// Check current user's Google Calendar status
+router.get('/google-status', authenticateJWT, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const hasValidToken = user.googleAccessToken && 
+                         user.googleTokenExpiry && 
+                         new Date() < new Date(user.googleTokenExpiry);
+
+    res.json({
+      connected: !!user.googleAccessToken,
+      hasValidToken,
+      needsRefresh: user.googleAccessToken && !hasValidToken,
+      googleCalendarConnected: user.googleCalendarConnected
     });
   } catch (error) {
     console.error('Error checking Google status:', error);

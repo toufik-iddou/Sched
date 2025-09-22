@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const passport = require('passport');
 const session = require('express-session');
+// Import auth configuration to register Google strategy
 const authRoutes = require('./auth');
 const userRoutes = require('./routes/user');
 const availabilityRoutes = require('./routes/availability');
