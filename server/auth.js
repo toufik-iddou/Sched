@@ -63,7 +63,9 @@ router.get('/google', passport.authenticate('google', {
   ] 
 }));
 
-router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/' }), (req, res) => {
+router.get('/google/callback',
+   passport.authenticate('google', { session: false, failureRedirect: '/' }),
+    (req, res) => {
   // Issue JWT
   const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
   // Redirect to frontend with token

@@ -108,6 +108,8 @@ router.post('/book/:username', async (req, res) => {
       refreshToken: user.googleRefreshToken
     });
 
+    console.log({      accessToken: user.googleAccessToken,
+      refreshToken: user.googleRefreshToken})
     if (event.success) {
       eventId = event.eventId;
       meetLink = event.meetLink;
@@ -142,6 +144,12 @@ router.post('/book/:username', async (req, res) => {
 
   // Validate meet link before saving
   const validMeetLink = meetLink && isValidMeetLink(meetLink) ? meetLink : null;
+  
+  console.log('Meet link validation:', {
+    originalLink: meetLink,
+    isValid: isValidMeetLink(meetLink),
+    finalLink: validMeetLink
+  });
   
   const booking = await Booking.create({
     host: user._id,

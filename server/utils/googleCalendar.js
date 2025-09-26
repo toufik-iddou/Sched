@@ -146,7 +146,7 @@ async function createCalendarEvent({ hostEmail, guestEmail, start, end, summary,
     return {
       success: true,
       eventId: createdEvent.id,
-      meetLink: meetLink || 'https://meet.google.com/',
+      meetLink: meetLink || null, // Don't return invalid fallback link
       eventUrl: createdEvent.htmlLink
     };
 
@@ -208,14 +208,30 @@ async function deleteCalendarEvent({ eventId, accessToken }) {
 async function createMockCalendarEvent({ hostEmail, guestEmail, start, end, summary }) {
   console.log('Using mock calendar event (Google Calendar not configured)');
   
-  // Don't generate invalid meet links - let the frontend handle this
+  // Don't generate fake meet links - they don't work
+  // Return null for meetLink to indicate no video call link is available
+  
   return {
     success: true,
     eventId: `mock-event-${Date.now()}`,
-    meetLink: null, // No valid meet link available
+    meetLink: null, // No fake meet link
     eventUrl: null,
     isMock: true
   };
+}
+
+// Generate a basic Meet room code (3 letters-4 letters-3 letters format)
+function generateMeetCode() {
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const generatePart = (length) => {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += letters.charAt(Math.floor(Math.random() * letters.length));
+    }
+    return result;
+  };
+  
+  return `${generatePart(3)}-${generatePart(4)}-${generatePart(3)}`;
 }
 
 // Validate if a meet link is a real Google Meet link
@@ -235,5 +251,6 @@ module.exports = {
   getTokensFromCode,
   refreshAccessToken,
   createMockCalendarEvent,
+  generateMeetCode,
   isValidMeetLink
 }; 
