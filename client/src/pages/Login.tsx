@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { API_URL } from '../config.ts';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const Login = () => {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    window.location.href = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/auth/google`;
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   return (
