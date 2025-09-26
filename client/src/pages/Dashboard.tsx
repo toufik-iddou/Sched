@@ -49,7 +49,7 @@ function Dashboard() {
   const [isCreatingSlots, setIsCreatingSlots] = React.useState(false);
 
   React.useEffect(() => {
-    setLoading(false)
+    setLoading(true)
     const token = localStorage.getItem('token');
     if (!token) return;
     console.log(`${API_URL}/user/me`)
