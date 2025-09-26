@@ -8,6 +8,7 @@ type Slot = {
   start: string; 
   end: string;
   slotType?: string;
+  name?: string;
   slotId?: string;
   duration?: number;
 };
@@ -64,6 +65,7 @@ function Dashboard() {
   }, []);
 
   React.useEffect(() => {
+
     const token = localStorage.getItem('token');
     if (token) {
       // Get all availability slots
@@ -600,8 +602,9 @@ function Dashboard() {
                 ) : (
                   Object.entries(groupedSlots).map(([slotType, slots]) => {
                     const slotsList = slots as Slot[];
-                    const slotTypeSlug = slotType.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                    const bookingUrl = `${window.location.origin}/book/${user.name}/${slotTypeSlug}`;
+                    // const slotTypeSlug = slotType.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                    console.log(slotsList)
+                    const bookingUrl = `${window.location.origin}/book/${user.name}/${slotsList[0].name}`;
                     const uniqueDays = [...new Set(slotsList.map(slot => slot.day))];
                     
                     return (

@@ -17,12 +17,12 @@ router.get('/availability/:username', async (req, res) => {
 });
 
 // Get host's public availability by slot type (by username and slot type)
-router.get('/availability/:username/:slotType', async (req, res) => {
+router.get('/availability/:username/:slotName', async (req, res) => {
   const user = await User.findOne({ name: req.params.username });
   if (!user) return res.status(404).json({ message: 'Host not found' });
   
   const slotType = req.params.slotType
-  const slots = await Availability.find({ user: user._id, slotType });
+  const slots = await Availability.find({ user: user._id, name: req.params.slotName });
   
   if (slots.length === 0) {
     return res.status(404).json({ message: 'Slot type not found' });
