@@ -1,6 +1,5 @@
 import * as React from 'react';
-import axios from 'axios';
-import { API_URL } from '../config.ts';
+import { getCurrentUser, getAvailability, getGroupedAvailability, getUserBookings, createAvailability, createBulkAvailability, deleteAvailability, deleteSlotType } from '../services/api.ts';
 
 type Slot = { 
   _id?: string;
@@ -52,12 +51,13 @@ function Dashboard() {
   React.useEffect(() => {
     setLoading(true)
     const token = localStorage.getItem('token');
-    if (!token) return;
-    console.log(`${API_URL}/user/me`)
-    axios.get(`${API_URL}/user/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => setUser(res.data))
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    
+    getCurrentUser()
+      .then(res => setUser(res))
       .catch((err) => {
         setUser(null);
         setLoading(false)})
@@ -65,27 +65,20 @@ function Dashboard() {
   }, []);
 
   React.useEffect(() => {
-
     const token = localStorage.getItem('token');
     if (token) {
       // Get all availability slots
-      axios.get(`${API_URL}/availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(res => setAvailability(res.data));
+      getAvailability().then(res => setAvailability(res));
 
       // Get grouped slots by type
-      axios.get(`${API_URL}/availability/grouped`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(res => setGroupedSlots(res.data));
+      getGroupedAvailability().then(res => setGroupedSlots(res));
     }
   }, [user]);
 
   React.useEffect(() => {
     const token = localStorage.getItem('token');
     if (user && token) {
-      axios.get(`${API_URL}/user/bookings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(res => setBookings(res.data));
+      getUserBookings().then(res => setBookings(res));
     }
   }, [user]);
 
@@ -128,13 +121,9 @@ function Dashboard() {
 
   const handleAddSlot = async (e: any) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token) return;
     
     try {
-      await axios.post(`${API_URL}/availability`, slot, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await createAvailability(slot);
       
       setAvailability((prev) => {
         const filtered = prev.filter((s) => s.day !== slot.day);
@@ -149,13 +138,8 @@ function Dashboard() {
   };
 
   const handleDeleteSlot = async (day: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
     try {
-      await axios.delete(`${API_URL}/availability/${day}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteAvailability(day);
       setAvailability((prev) => prev.filter((s) => s.day !== day));
     } catch (error) {
       console.error('Error deleting slot:', error);
@@ -163,24 +147,15 @@ function Dashboard() {
   };
 
   const handleDeleteSlotType = async (slotType: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
     try {
-      await axios.delete(`${API_URL}/availability/type/${encodeURIComponent(slotType)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteSlotType(slotType);
       
       // Refresh data
-      const availRes = await axios.get(`${API_URL}/availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAvailability(availRes.data);
+      const availRes = await getAvailability();
+      setAvailability(availRes);
       
-      const groupedRes = await axios.get(`${API_URL}/availability/grouped`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setGroupedSlots(groupedRes.data);
+      const groupedRes = await getGroupedAvailability();
+      setGroupedSlots(groupedRes);
     } catch (error) {
       console.error('Error deleting slot type:', error);
     }
@@ -230,26 +205,18 @@ function Dashboard() {
     }
 
     setIsCreatingSlots(true);
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     try {
-      const response = await axios.post(`${API_URL}/availability/bulk`, bulkForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await createBulkAvailability(bulkForm);
 
-      alert(`Successfully created ${response.data.count} time slots!`);
+      alert(`Successfully created ${response.count} time slots!`);
       
       // Refresh data
-      const availRes = await axios.get(`${API_URL}/availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAvailability(availRes.data);
+      const availRes = await getAvailability();
+      setAvailability(availRes);
       
-      const groupedRes = await axios.get(`${API_URL}/availability/grouped`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setGroupedSlots(groupedRes.data);
+      const groupedRes = await getGroupedAvailability();
+      setGroupedSlots(groupedRes);
 
       // Reset form
       setBulkForm({

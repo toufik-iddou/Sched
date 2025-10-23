@@ -23,7 +23,7 @@ export const getCsrfToken = async (): Promise<string> => {
   try {
     const response = await api.get('/csrf-token');
     csrfToken = response.data.csrfToken;
-    return csrfToken;
+    return csrfToken!;
   } catch (error) {
     console.error('Failed to get CSRF token:', error);
     throw error;
@@ -51,23 +51,46 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Clear any stored authentication state
-      localStorage.removeItem('token');
-      // Redirect to login
-      window.location.href = '/login';
-    }
+    console.log('API Error:', error);
     
-    if (error.response?.status === 403 && error.response?.data?.error === 'CSRF token validation failed') {
-      // Clear CSRF token and retry
-      csrfToken = null;
-      try {
-        const token = await getCsrfToken();
-        error.config.headers['X-CSRF-Token'] = token;
-        return api.request(error.config);
-      } catch (retryError) {
-        console.error('Failed to retry with new CSRF token:', retryError);
+    // Check if we have a response object (server responded)
+    if (error.response) {
+      console.log('Response status:', error.response.status);
+      
+      if (error.response.status === 401 || error.response.status === 403) {
+        console.log('Authentication error detected');
+        
+        // Handle CSRF token validation failures specifically
+        if (error.response.status === 403 && error.response.data?.error === 'CSRF token validation failed') {
+          // Clear CSRF token and retry
+          csrfToken = null;
+          try {
+            const token = await getCsrfToken();
+            error.config.headers['X-CSRF-Token'] = token;
+            return api.request(error.config);
+          } catch (retryError) {
+            console.error('Failed to retry with new CSRF token:', retryError);
+          }
+        } else {
+          // For all other 401/403 errors, auto logout
+          // Clear any stored authentication state
+          localStorage.removeItem('token');
+          // Clear CSRF token
+          csrfToken = null;
+          // Redirect to login
+          window.location.href = '/login';
+        }
       }
+    } else if (error.request) {
+      // The request was made but no response was received (network error, timeout, etc.)
+      console.log('Network error - no response received:', error.request);
+      console.log('Error message:', error.message);
+      
+      // For network errors, you might want to show a user-friendly message
+      // but don't auto-logout as it might be a temporary network issue
+    } else {
+      // Something else happened in setting up the request
+      console.log('Request setup error:', error.message);
     }
     
     return Promise.reject(error);
@@ -99,43 +122,99 @@ export const logout = async () => {
 
 // User functions
 export const getCurrentUser = async () => {
-  const response = await api.get('/user/me');
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.get('/user/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 export const getUserBookings = async () => {
-  const response = await api.get('/user/bookings');
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.get('/user/bookings', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 // Availability functions
 export const getAvailability = async () => {
-  const response = await api.get('/availability');
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.get('/availability', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 export const getGroupedAvailability = async () => {
-  const response = await api.get('/availability/grouped');
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.get('/availability/grouped', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 export const createAvailability = async (slot: any) => {
-  const response = await api.post('/availability', slot);
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.post('/availability', slot, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 export const createBulkAvailability = async (bulkData: any) => {
-  const response = await api.post('/availability/bulk', bulkData);
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.post('/availability/bulk', bulkData, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 export const deleteAvailability = async (day: string) => {
-  const response = await api.delete(`/availability/${day}`);
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.delete(`/availability/${day}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
 export const deleteSlotType = async (slotType: string) => {
-  const response = await api.delete(`/availability/type/${slotType}`);
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  const response = await api.delete(`/availability/type/${encodeURIComponent(slotType)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
 
