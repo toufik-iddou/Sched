@@ -14,7 +14,7 @@ const availabilitySchema = new mongoose.Schema({
 });
 
 
-availabilitySchema.index({ user: 1, name: 1,start:1 }, { unique: true });
+availabilitySchema.index({ user: 1, name: 1,start:1, day:1 }, { unique: true });
 // Generate unique slot ID before saving
 availabilitySchema.pre('save', function(next) {
   ensureSlotId(this)
