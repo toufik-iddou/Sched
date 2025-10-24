@@ -45,8 +45,14 @@ app.get('/csrf-token', csrfProtection, (req, res) => {
 
 // Apply CSRF protection to all routes except auth and public routes
 app.use((req, res, next) => {
-  // Skip CSRF for auth routes and public endpoints
-  if (req.path.startsWith('/auth/') || req.path === '/csrf-token' || req.path === '/test') {
+  // Skip CSRF for auth routes, public endpoints, and public booking endpoints
+  if (req.path.startsWith('/auth/') || 
+      req.path === '/csrf-token' || 
+      req.path === '/test' ||
+      req.path.startsWith('/booking/availability/') ||
+      req.path.startsWith('/booking/slot-types/') ||
+      req.path.startsWith('/booking/host/') ||
+      req.path.startsWith('/booking/book/')) {
     return next();
   }
   return csrfProtection(req, res, next);
