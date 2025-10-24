@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const passport = require('passport');
 const session = require('express-session');
+const csrf = require('csurf');
 // Import auth configuration to register Google strategy
 const authRoutes = require('./auth');
 const userRoutes = require('./routes/user');
@@ -33,6 +34,23 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+
+// CSRF middleware configuration
+const csrfProtection = csrf();
+
+// CSRF token endpoint (apply CSRF middleware to generate token)
+app.get('/csrf-token', csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
+// Apply CSRF protection to all routes except auth and public routes
+app.use((req, res, next) => {
+  // Skip CSRF for auth routes and public endpoints
+  if (req.path.startsWith('/auth/') || req.path === '/csrf-token' || req.path === '/test') {
+    return next();
+  }
+  return csrfProtection(req, res, next);
+});
 
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
