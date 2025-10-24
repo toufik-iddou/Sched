@@ -1,15 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-
+import { ReactComponent as CalendarIcon } from '../logo.svg';
 // Define icons manually to avoid lucide-react dependency issues for now
-const Calendar = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-    <line x1="16" y1="2" x2="16" y2="6"></line>
-    <line x1="8" y1="2" x2="8" y2="6"></line>
-    <line x1="3" y1="10" x2="21" y2="10"></line>
-  </svg>
-);
+
 
 const Clock = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -43,7 +36,7 @@ const ArrowRight = ({ className }: { className?: string }) => (
 const Home = () => {
   const features = [
     {
-      icon: <Calendar className="w-6 h-6" />,
+      icon: <CalendarIcon className="w-6 h-6" />,
       title: "Easy Scheduling",
       description: "Set your availability and let others book time with you effortlessly."
     },
@@ -75,7 +68,7 @@ const Home = () => {
           <div className="flex justify-between items-center h-18">
             <div className="flex items-center">
               <div className="p-2 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg">
-                <Calendar className="w-6 h-6 text-white" />
+                <CalendarIcon className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-bold text-gray-900 ml-3">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
             </div>
@@ -185,7 +178,7 @@ const Home = () => {
             <div className="lg:text-center">
               <div className="card max-w-lg mx-auto transform lg:rotate-3 hover:rotate-0 transition-transform duration-500">
                 <div className="calendar-gradient p-8 rounded-2xl text-white text-center mb-6 shadow-2xl">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-90" />
+                  <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-90" />
                   <h3 className="text-2xl font-bold mb-2">Your Booking Page</h3>
                   <p className="text-primary-100 text-lg">Beautiful, professional, and always available</p>
                 </div>
@@ -231,7 +224,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-center">
             <div className="p-2 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg mr-3">
-              <Calendar className="w-5 h-5 text-white" />
+              <CalendarIcon className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-gray-900">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
             <span className="text-gray-500 ml-6">© 2024 All rights reserved.</span>

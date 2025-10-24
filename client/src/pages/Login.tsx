@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { API_URL } from '../config.ts';
+import { ReactComponent as CalendarIcon } from '../logo.svg';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -32,12 +33,8 @@ const Login = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <div className="flex items-center">
-            <svg className="w-8 h-8 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
+            <CalendarIcon className="w-8 h-8 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"/>
+              
             <span className="text-2xl font-bold text-gray-900">{process.env.REACT_APP_APP_NAME || "Sched"}</span>
           </div>
         </div>
