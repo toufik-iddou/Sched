@@ -84,10 +84,10 @@ router.get('/google', (req, res, next) => {
 router.get('/google/callback', async (req, res) => {
   const { code, error } = req.query;
   
+  
   if (error) {
     return res.redirect(`${process.env.FRONTEND_URL}/login?error=access_denied`);
   }
-  
   if (!code) {
     return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_code`);
   }
