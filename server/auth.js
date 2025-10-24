@@ -4,16 +4,15 @@ const User = require('./models/User');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
-// Initialize State Generator utility for OAuth
-const crypto = require('crypto');
-
 const router = express.Router();
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_REDIRECT_URI,
-  session: false
+  session: false,
+  accessType: 'offline',
+  prompt: 'consent'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
@@ -59,99 +58,36 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // Google OAuth routes
-router.get('/google', (req, res, next) => {
-  // Build custom authorization URL with proper parameters for refresh token
-  const scope = [
+router.get('/google', passport.authenticate('google', {
+  scope: [
     'profile', 
     'email',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/calendar.events'
-  ];
-  
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
-    scope: scope.join(' '),
-    response_type: 'code',
-    access_type: 'offline',    // Critical for getting refresh tokens  
-    prompt: 'consent'          // Critical for forcing consent screen
-  });
-  
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  res.redirect(authUrl);
-});
+  ],
+  accessType: 'offline',
+  prompt: 'consent'
+}));
 
-router.get('/google/callback', async (req, res) => {
-  const { code, error } = req.query;
-  
-  
-  if (error) {
-    return res.redirect(`${process.env.FRONTEND_URL}/login?error=access_denied`);
-  }
-  if (!code) {
-    return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_code`);
-  }
-  
-  try {
-    // Exchange authorization code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        code: code,
-        grant_type: 'authorization_code',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI
-      })
-    });
-    
-    const tokens = await tokenResponse.json();
-    
-    if (tokens.error) {
-      console.error('Token exchange error:', tokens);
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=token_error`);
+router.get('/google/callback', 
+  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_error` }),
+  async (req, res) => {
+    try {
+      // User is available in req.user after successful passport authentication
+      const user = req.user;
+      
+      console.log('User authenticated:', { userId: user._id, email: user.email });
+      
+      // Issue JWT
+      const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      
+      // Redirect to frontend with token
+      res.redirect(`${process.env.FRONTEND_URL}/login?token=${jwtToken}`);
+    } catch (error) {
+      console.error('JWT generation error:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=jwt_error`);
     }
-    
-    // Get user profile
-    const profileResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
-    const profile = await profileResponse.json();
-    
-    // Create or update user with tokens
-    let user = await User.findOne({ googleId: profile.id });
-    if (!user) {
-      user = await User.create({
-        googleId: profile.id,
-        email: profile.email,
-        name: profile.name,
-        avatar: profile.picture,
-        googleAccessToken: tokens.access_token,
-        googleRefreshToken: tokens.refresh_token || null, // Handle undefined gracefully
-        googleTokenExpiry: new Date(Date.now() + tokens.expires_in * 1000),
-        googleCalendarConnected: true,
-      });
-    } else {
-      user.googleAccessToken = tokens.access_token;
-      if (tokens.refresh_token) {
-        user.googleRefreshToken = tokens.refresh_token;
-      }
-      user.googleTokenExpiry = new Date(Date.now() + tokens.expires_in * 1000);
-      user.googleCalendarConnected = true;
-      await user.save();
-    }
-    
-    console.log('Tokens received:', { accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
-    
-    // Issue JWT
-    const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    // Redirect to frontend with token
-    res.redirect(`${process.env.FRONTEND_URL}/login?token=${jwtToken}`);
-  } catch (error) {
-    console.error('OAuth callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_error`);
   }
-});
+);
 
 module.exports = router; 
