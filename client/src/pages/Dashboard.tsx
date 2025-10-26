@@ -250,7 +250,7 @@ function Dashboard() {
     return totalSlots * bulkForm.days.length;
   };
 
-  const bookingUrl = `${window.location.origin}/book/${user.name}`;
+  const bookingUrl = new URL(`${window.location.origin}/book/${user.name}`).toString();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -566,7 +566,7 @@ function Dashboard() {
                     const slotsList = slots as Slot[];
                     // const slotTypeSlug = slotType.toLowerCase().replace(/[^a-z0-9]/g, '-');
                     console.log(slotsList)
-                    const bookingUrl = `${window.location.origin}/book/${user.name}/${slotsList[0].name}`;
+                    const bookingUrl = new URL(`${window.location.origin}/book/${user.name}/${slotsList[0].name}`).toString();
                     const uniqueDays = [...new Set(slotsList.map(slot => slot.day))];
                     
                     return (
